@@ -29,7 +29,7 @@ end
 
 -- Event
 RegisterNetEvent('jl-carboost:server:saveBoostData', function (citizenid)
-   MySQL.Async.execute('UPDATE boost_data SET data = @data WHERE citizenid = @citizenid', {
+   exports.oxmysql:update('UPDATE boost_data SET data = @data WHERE citizenid = @citizenid', {
       ['@citizenid'] = citizenid,
       ['@data'] = json.encode(Config.QueueList[citizenid])
    })
@@ -51,7 +51,7 @@ RegisterNetEvent('jl-carboost:server:newContract', function (source)
       plate = RandomPlate(),
    }
    if #Config.QueueList[citizenid].contract <= Config.MaxContract then     
-      MySQL.Async.insert('INSERT INTO boost_contract (owner, data, started, expire) VALUES (@owner, @data, NOW(),DATE_ADD(NOW(), INTERVAL @expire HOUR))', {
+      exports.oxmysql:insert('INSERT INTO boost_contract (owner, data, started, expire) VALUES (@owner, @data, NOW(),DATE_ADD(NOW(), INTERVAL @expire HOUR))', {
          ['@owner'] = citizenid,
          ['@data'] = json.encode(contractData),
          ['@expire'] = randomHour
@@ -95,7 +95,7 @@ end)
 
 -- This one is only for serverside
 RegisterNetEvent('jl-carboost:server:getContract', function (citizenid)
-   local result = MySQL.Sync.fetchAll('SELECT * FROM boost_contract WHERE owner = @owner', {
+   local result = exports.oxmysql:executeSync('SELECT * FROM boost_contract WHERE owner = @owner', {
       ['@owner'] = citizenid
    })
    if result[1] then
@@ -115,7 +115,7 @@ end)
 RegisterNetEvent('jl-carboost:server:getItem', function ()
    local src = source
    local pData = QBCore.Functions.GetPlayer(src)
-   local result = MySQL.Sync.fetchScalar('SELECT items FROM bennys_shop WHERE citizenid = @citizenid', {
+   local result = exports.oxmysql:scalarSync('SELECT items FROM bennys_shop WHERE citizenid = @citizenid', {
       ['@citizenid'] = pData.PlayerData.citizenid
    })
    if result then
@@ -137,7 +137,7 @@ RegisterNetEvent('jl-carboost:server:buyItem', function (price, config, first)
    local src = source 
    local pData = QBCore.Functions.GetPlayer(src)
    pData.Functions.RemoveMoney('bank', price, 'bought-bennys-item')
-      MySQL.Async.insert('INSERT INTO bennys_shop (citizenid, items) VALUES (@citizenid, @items) ON DUPLICATE KEY UPDATE items = @items', {
+      exports.oxmysql:insert('INSERT INTO bennys_shop (citizenid, items) VALUES (@citizenid, @items) ON DUPLICATE KEY UPDATE items = @items', {
          ['@citizenid'] = pData.PlayerData.citizenid,
          ['@items'] = json.encode(config)
       })
@@ -183,7 +183,7 @@ end)
 RegisterNetEvent('jl-carboost:server:deleteContract', function (contractid)
    local src = source
    local Player = QBCore.Functions.GetPlayer(src)
-   MySQL.Async.execute('DELETE FROM boost_contract WHERE owner = @citizenid AND id = @id',{
+   exports.oxmysql:update('DELETE FROM boost_contract WHERE owner = @citizenid AND id = @id',{
       ['@citizenid'] = Player.PlayerData.citizenid,
       ['@id'] = contractid
    }, function (result)
@@ -197,7 +197,7 @@ end)
 RegisterNetEvent('jl-carboost:server:updateBennysConfig', function (data)
    local src = source 
    local pData = QBCore.Functions.GetPlayer(src)
-   MySQL.Async.execute('UPDATE bennys_shop SET items = @items WHERE citizenid = @citizenid', {
+   exports.oxmysql:update('UPDATE bennys_shop SET items = @items WHERE citizenid = @citizenid', {
       ['@citizenid'] = pData.PlayerData.citizenid,
       ['@items'] = json.encode(data)
    })
@@ -208,7 +208,7 @@ RegisterNetEvent('jl-carboost:server:vinscratch', function(NetworkID, mods, mode
    local pData = QBCore.Functions.GetPlayer(src)
    local entity = NetworkGetEntityFromNetworkId(NetworkID)
    local plate = GetVehicleNumberPlateText(entity)
-   MySQL.Async.insert('INSERT INTO player_vehicles (license, citizenid, vehicle, hash, mods, plate, state, vinscratch, vinnumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', {
+   exports.oxmysql:insert('INSERT INTO player_vehicles (license, citizenid, vehicle, hash, mods, plate, state, vinscratch, vinnumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', {
       pData.PlayerData.license,
       pData.PlayerData.citizenid,
       model,
@@ -288,7 +288,7 @@ QBCore.Commands.Add('giveContract', 'Give contract, admin only', {
          plate = RandomPlate(),
          
       }
-      MySQL.Async.insert('INSERT INTO boost_contract (owner, data, started, expire) VALUES (@owner, @data, NOW(),DATE_ADD(NOW(), INTERVAL @expire HOUR))', {
+      exports.oxmysql:insert('INSERT INTO boost_contract (owner, data, started, expire) VALUES (@owner, @data, NOW(),DATE_ADD(NOW(), INTERVAL @expire HOUR))', {
          ['@owner'] = player.PlayerData.citizenid,
          ['@data'] = json.encode(contractData),
          ['@expire'] = expireTime
@@ -315,7 +315,7 @@ RegisterNetEvent('jl-carboost:server:takeAll', function (data)
       print(item.name)
       TriggerClientEvent('inventory:client:itemBox', src, QBCore.Shared.Items[item.name], 'add')
    end
-   MySQL.Async.execute('UPDATE bennys_shop SET items = @items WHERE citizenid = @citizenid', {
+   exports.oxmysql:update('UPDATE bennys_shop SET items = @items WHERE citizenid = @citizenid', {
       ['@citizenid'] = Player.PlayerData.citizenid,
       ['@items'] = json.encode({})
    })
@@ -324,14 +324,14 @@ end)
 
 RegisterNetEvent('jl-carboost:server:getBoostSale', function()
    local src = source
-   local result = MySQL.Sync.fetchAll('SELECT * FROM boost_contract WHERE onsale = 1')
+   local result = exports.oxmysql:executeSync('SELECT * FROM boost_contract WHERE onsale = 1')
    if result[1] then
       TriggerClientEvent('jl-carboost:client:loadBoostStore', src,result)
    end
 end)
 
 RegisterNetEvent('jl-carboost:server:setPlate', function (oldPlate, newPlate)
-   MySQL.Async.execute('UPDATE player_vehicles SET plate = @newPlate WHERE plate = @oldPlate', {
+   exports.oxmysql:update('UPDATE player_vehicles SET plate = @newPlate WHERE plate = @oldPlate', {
       ['@oldPlate'] = oldPlate,
       ['@newPlate'] = newPlate
    })
@@ -363,14 +363,14 @@ QBCore.Functions.CreateCallback('jl-carboost:server:sellContract', function (sou
    local data = data.data
    local src = source
    local Player = QBCore.Functions.GetPlayer(src)
-   local result = MySQL.Sync.fetchAll('SELECT * FROM boost_contract WHERE id = @id AND owner = @owner', {
+   local result = exports.oxmysql:executeSync('SELECT * FROM boost_contract WHERE id = @id AND owner = @owner', {
       ['@owner'] = Player.PlayerData.citizenid,
       ['@id'] = data.id
    })
    if result[1] then
       local contractInfo = result[1]
       local contractData = json.decode(contractInfo.data)
-      MySQL.Async.execute('UPDATE boost_contract SET price = @price, onsale = 1 WHERE id = @id AND owner = @owner', {
+      exports.oxmysql:update('UPDATE boost_contract SET price = @price, onsale = 1 WHERE id = @id AND owner = @owner', {
          ['@id'] = data.id,
          ['@price'] = tonumber(data.price),
          ['@owner'] = Player.PlayerData.citizenid
@@ -392,7 +392,7 @@ QBCore.Functions.CreateCallback('jl-carboost:server:buycontract', function(sourc
    local src = source
    local Player = QBCore.Functions.GetPlayer(src)
    local toPlayer
-   local result = MySQL.Sync.fetchAll('SELECT * FROM boost_contract WHERE id = @id AND onsale = 1', {
+   local result = exports.oxmysql:executeSync('SELECT * FROM boost_contract WHERE id = @id AND onsale = 1', {
       ['@id'] = data.id
    })
    if result[1] then
@@ -412,7 +412,7 @@ QBCore.Functions.CreateCallback('jl-carboost:server:buycontract', function(sourc
       Player.Functions.RemoveMoney(Config.Payment, moneyAmount, 'bought-contract')
       toPlayer.Functions.AddMoney(Config.Payment, moneyAmount, 'bought-contract')
       TriggerClientEvent('QBCore:Notify', toPlayer.PlayerData.source, Lang:t('info.contract_buyed', {amount = moneyAmount}), "success")
-      MySQL.Async.execute('UPDATE boost_contract SET onsale = 0, owner = @owner WHERE id = @id', {
+      exports.oxmysql:update('UPDATE boost_contract SET onsale = 0, owner = @owner WHERE id = @id', {
          ['@id'] = data.id,
          ['@owner'] = Player.PlayerData.citizenid
       })
@@ -445,12 +445,12 @@ QBCore.Functions.CreateCallback('jl-carboost:server:transfercontract', function 
          error = "Invalid player"
       })
    end
-   local result = MySQL.Sync.fetchAll('SELECT * FROM boost_contract WHERE id = @id AND owner = @owner', {
+   local result = exports.oxmysql:executeSync('SELECT * FROM boost_contract WHERE id = @id AND owner = @owner', {
       ['@owner'] = Player.PlayerData.citizenid,
       ['@id'] = contractid
    })
    if result[1] then
-      MySQL.Async.execute('UPDATE boost_contract SET owner = @owner WHERE owner = @citizenid', {
+      exports.oxmysql:update('UPDATE boost_contract SET owner = @owner WHERE owner = @citizenid', {
          ['@owner'] = toPlayer.PlayerData.citizenid,
          ['@citizenid'] = Player.PlayerData.citizenid
       }, function ()
@@ -500,7 +500,7 @@ QBCore.Functions.CreateCallback('jl-carboost:server:getboostdata', function (sou
       rep = Player.PlayerData.metadata['carboostrep'],
       contract = {}
    }
-   local result = MySQL.Sync.fetchAll('SELECT * FROM boost_contract WHERE owner = @owner AND onsale = 0', {
+   local result = exports.oxmysql:executeSync('SELECT * FROM boost_contract WHERE owner = @owner AND onsale = 0', {
       ['@owner'] = citizenid
    })
    if result[1] then
@@ -526,7 +526,7 @@ QBCore.Functions.CreateCallback('jl-carboost:server:getContractData', function (
    if not data then return end
    local boostdata = data.data
    local Player = QBCore.Functions.GetPlayer(source)
-   local result = MySQL.Sync.fetchAll('SELECT * FROM boost_contract WHERE id = @id AND owner = @owner', {
+   local result = exports.oxmysql:executeSync('SELECT * FROM boost_contract WHERE id = @id AND owner = @owner', {
       ['@id'] = boostdata.id,
       ['@owner'] = Player.PlayerData.citizenid
    })
@@ -584,7 +584,7 @@ QBCore.Functions.CreateCallback('jl-carboost:server:checkvin', function (source,
    local src = source
    local veh = NetworkGetEntityFromNetworkId(data)
    local plate = GetVehicleNumberPlateText(veh)
-   local result = MySQL.Sync.fetchAll('SELECT vinnumber, vinscratch,citizenid  FROM player_vehicles WHERE plate = @plate', {
+   local result = exports.oxmysql:executeSync('SELECT vinnumber, vinscratch,citizenid  FROM player_vehicles WHERE plate = @plate', {
       ['@plate'] = plate
    })
    if result[1] then
@@ -637,7 +637,7 @@ end
 
 -- Delete expired contracts
 function DeleteExpiredContract()
-   MySQL.Async.execute('DELETE FROM boost_contract WHERE expire < NOW()',{}, function (result)
+   exports.oxmysql:update('DELETE FROM boost_contract WHERE expire < NOW()',{}, function (result)
       if result > 0 then
          print('Deleted ' .. result .. ' expired contracts')
       end
@@ -663,11 +663,11 @@ function CheckVersion(err, resp, headers)
 end
 
 function GenerateVIN()
-   local result = MySQL.Sync.fetchAll('SELECT * FROM player_vehicles WHERE vinnumber IS NULL')
+   local result = exports.oxmysql:executeSync('SELECT * FROM player_vehicles WHERE vinnumber IS NULL')
    if result[1] then
       for _, v in pairs(result) do
          local vin = RandomVIN()
-         MySQL.Sync.execute('UPDATE player_vehicles SET vinnumber = @vin WHERE id = @id', {
+         exports.oxmysql:updateSync('UPDATE player_vehicles SET vinnumber = @vin WHERE id = @id', {
             ['@vin'] = vin,
             ['@id'] = v.id
          })
@@ -689,7 +689,7 @@ end
 
 function AddVIN(plate)
    local vin = RandomVIN()
-   MySQL.Sync.execute('UPDATE player_vehicles SET vinnumber = @vin WHERE plate = @plate', {
+   exports.oxmysql:updateSync('UPDATE player_vehicles SET vinnumber = @vin WHERE plate = @plate', {
       ['@vin'] = vin,
       ['@plate'] = plate
    })
